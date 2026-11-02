@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981"/>
+      <stop offset="100%" stop-color="#059669"/>
+    </linearGradient>
+    <linearGradient id="coinGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="120" fill="url(#bgGrad)"/>
+  <!-- Motorcycle silhouette / Delivery Box -->
+  <g fill="#ffffff" transform="translate(64, 80)">
+    <!-- Delivery Box -->
+    <path d="M120 70 L260 70 L280 150 L100 150 Z" fill="#f8fafc" opacity="0.9"/>
+    <rect x="110" y="150" width="160" height="110" rx="12" fill="#e2e8f0"/>
+    <path d="M170 150 L210 150 L210 260 L170 260 Z" fill="#10b981" opacity="0.8"/>
+    <!-- Scooter / Bike body -->
+    <path d="M70 270 Q130 250 190 270 L260 270 L290 220 L310 220 L280 280 L230 280 L220 310 L100 310 Z" fill="#ffffff"/>
+    <!-- Front wheel -->
+    <circle cx="280" cy="310" r="45" fill="#1e293b"/>
+    <circle cx="280" cy="310" r="28" fill="#cbd5e1"/>
+    <circle cx="280" cy="310" r="10" fill="#10b981"/>
+    <!-- Back wheel -->
+    <circle cx="85" cy="310" r="45" fill="#1e293b"/>
+    <circle cx="85" cy="310" r="28" fill="#cbd5e1"/>
+    <circle cx="85" cy="310" r="10" fill="#10b981"/>
+    <!-- Handlebar -->
+    <path d="M260 210 L300 170 L320 175" stroke="#ffffff" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <!-- Coin Icon Floating -->
+    <circle cx="310" cy="70" r="50" fill="url(#coinGrad)"/>
+    <circle cx="310" cy="70" r="42" fill="#fbbf24" stroke="#d97706" stroke-width="3"/>
+    <text x="310" y="85" font-family="system-ui, sans-serif" font-size="44" font-weight="900" fill="#78350f" text-anchor="middle">₫</text>
+  </g>
+</svg>
