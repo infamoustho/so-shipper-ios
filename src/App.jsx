@@ -78,8 +78,42 @@ export default function App() {
       endTime: null,
       orders: [],
       deliveringOrder: null,
+      isOnBreak: false,
+      breakStartTime: null,
+      totalBreakDurationMs: 0,
     };
     updateActiveShift(newShift);
+  };
+
+  // BẬT / TẮT TẠM NGHỈ
+  const handleToggleBreak = () => {
+    if (!activeShift) return;
+
+    if (currentDeliveringOrder) {
+      alert('Bạn đang có đơn chưa hoàn thành! Vui lòng giao xong hoặc hủy đơn trước khi tạm nghỉ.');
+      return;
+    }
+
+    if (activeShift.isOnBreak) {
+      // Kết thúc tạm nghỉ -> Quay lại chạy
+      sound.playResume();
+      const currentBreakTime = Date.now() - (activeShift.breakStartTime || Date.now());
+      const updatedTotalBreak = (activeShift.totalBreakDurationMs || 0) + currentBreakTime;
+      updateActiveShift({
+        ...activeShift,
+        isOnBreak: false,
+        breakStartTime: null,
+        totalBreakDurationMs: updatedTotalBreak,
+      });
+    } else {
+      // Bắt đầu tạm nghỉ
+      sound.playBreak();
+      updateActiveShift({
+        ...activeShift,
+        isOnBreak: true,
+        breakStartTime: Date.now(),
+      });
+    }
   };
 
   // NHẬN ĐƠN MỚI
@@ -218,9 +252,17 @@ export default function App() {
 
   // XÁC NHẬN KẾT THÚC CA (Lưu vào History)
   const handleConfirmCheckout = (endTime) => {
+    let finalBreakDuration = activeShift.totalBreakDurationMs || 0;
+    if (activeShift.isOnBreak && activeShift.breakStartTime) {
+      finalBreakDuration += ((endTime || Date.now()) - activeShift.breakStartTime);
+    }
+
     const finalShift = {
       ...activeShift,
       endTime: endTime || Date.now(),
+      isOnBreak: false,
+      breakStartTime: null,
+      totalBreakDurationMs: finalBreakDuration,
       deliveringOrder: null,
     };
 
@@ -260,6 +302,7 @@ export default function App() {
               onCancelDeliveringOrder={handleCancelDeliveringOrder}
               onDeleteOrder={handleDeleteOrder}
               onRequestCheckout={handleRequestCheckout}
+              onToggleBreak={handleToggleBreak}
               gpsLoading={gpsLoading}
             />
           ) : (

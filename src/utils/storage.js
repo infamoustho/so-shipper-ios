@@ -127,19 +127,31 @@ export function saveSettings(settings) {
 
 // Generate shareable Zalo text
 export function generateShareSummary(shift) {
-  const duration = shift.endTime ? formatDuration(shift.endTime - shift.startTime) : 'Đang chạy';
+  const endTime = shift.endTime || Date.now();
+  const totalDurationMs = endTime - (shift.startTime || endTime);
+  const breakDurationMs = (shift.totalBreakDurationMs || 0) + (shift.isOnBreak && shift.breakStartTime ? (endTime - shift.breakStartTime) : 0);
+  const activeDurationMs = Math.max(0, totalDurationMs - breakDurationMs);
+  
   const totalFee = (shift.orders || []).reduce((sum, o) => sum + (o.fee || 0), 0);
   const totalDistance = (shift.orders || []).reduce((sum, o) => sum + (o.distanceKm || 0), 0);
   const orderCount = (shift.orders || []).length;
   const avgPerOrder = orderCount > 0 ? Math.round(totalFee / orderCount) : 0;
+  
+  const activeHours = activeDurationMs / (1000 * 60 * 60);
+  const avgPerHour = activeHours > 0 ? Math.round(totalFee / activeHours) : totalFee;
+
+  const timeBreakdown = breakDurationMs > 60000 
+    ? `(${formatDuration(totalDurationMs)} • Nghỉ ${formatDuration(breakDurationMs)} • Chạy thực: ${formatDuration(activeDurationMs)})`
+    : `(${formatDuration(totalDurationMs)})`;
 
   return `🛵 TỔNG KẾT CA CHẠY SHIPPER
 📅 Ngày: ${formatDate(shift.startTime)}
-⏰ Thời gian: ${formatTime(shift.startTime)} - ${shift.endTime ? formatTime(shift.endTime) : 'Hiện tại'} (${duration})
+⏰ Thời gian: ${formatTime(shift.startTime)} - ${shift.endTime ? formatTime(shift.endTime) : 'Hiện tại'} ${timeBreakdown}
 ━━━━━━━━━━━━━━━━━━
 📦 Số đơn hoàn thành: ${orderCount} đơn
 💰 Tổng tiền ship: ${formatVND(totalFee)}
 📍 Tổng quãng đường: ${totalDistance.toFixed(1)} km
+⭐ Thu nhập TB/giờ chạy: ${formatVND(avgPerHour)}/h
 ⭐ Thu nhập TB/đơn: ${formatVND(avgPerOrder)}
 ━━━━━━━━━━━━━━━━━━
 Ghi chú từ Sổ Shipper 🛵`;

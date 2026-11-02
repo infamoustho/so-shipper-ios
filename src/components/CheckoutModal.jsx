@@ -33,18 +33,28 @@ export default function CheckoutModal({ shift, onConfirmCheckout, onClose }) {
   }, []);
 
   const endTime = Date.now();
-  const durationMs = endTime - (shift.startTime || Date.now());
+  const totalDurationMs = endTime - (shift.startTime || Date.now());
+  const currentBreak = shift.isOnBreak && shift.breakStartTime ? (endTime - shift.breakStartTime) : 0;
+  const breakDurationMs = (shift.totalBreakDurationMs || 0) + currentBreak;
+  const activeWorkDurationMs = Math.max(0, totalDurationMs - breakDurationMs);
+
   const orders = shift.orders || [];
   const totalOrders = orders.length;
   const totalFee = orders.reduce((sum, o) => sum + (o.fee || 0), 0);
   const totalDistance = orders.reduce((sum, o) => sum + (o.distanceKm || 0), 0);
   const avgPerOrder = totalOrders > 0 ? Math.round(totalFee / totalOrders) : 0;
-  const hoursWorked = durationMs / (1000 * 60 * 60);
-  const avgPerHour = hoursWorked > 0 ? Math.round(totalFee / hoursWorked) : totalFee;
+  
+  const activeHours = activeWorkDurationMs / (1000 * 60 * 60);
+  const avgPerHour = activeHours > 0 ? Math.round(totalFee / activeHours) : totalFee;
 
   const handleCopyZalo = () => {
     sound.playTap();
-    const tempShift = { ...shift, endTime };
+    const tempShift = { 
+      ...shift, 
+      endTime, 
+      totalBreakDurationMs: breakDurationMs,
+      isOnBreak: false 
+    };
     const text = generateShareSummary(tempShift);
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true);
@@ -54,7 +64,12 @@ export default function CheckoutModal({ shift, onConfirmCheckout, onClose }) {
 
   const handleExportCSV = () => {
     sound.playTap();
-    const tempShift = { ...shift, endTime };
+    const tempShift = { 
+      ...shift, 
+      endTime, 
+      totalBreakDurationMs: breakDurationMs,
+      isOnBreak: false 
+    };
     exportShiftToCSV(tempShift);
   };
 
@@ -81,8 +96,18 @@ export default function CheckoutModal({ shift, onConfirmCheckout, onClose }) {
             Chúc mừng bạn đã hoàn thành ca!
           </h2>
           <p className="text-xs text-slate-400 mt-1">
-            {formatDate(shift.startTime)} • {formatTime(shift.startTime)} – {formatTime(endTime)} ({formatDuration(durationMs)})
+            {formatDate(shift.startTime)} • {formatTime(shift.startTime)} – {formatTime(endTime)} ({formatDuration(totalDurationMs)})
           </p>
+          {breakDurationMs > 60000 && (
+            <div className="flex items-center justify-center gap-2 mt-1.5 text-[11px]">
+              <span className="text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                ☕ Đã nghỉ: {formatDuration(breakDurationMs)}
+              </span>
+              <span className="text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                ⏱️ Chạy thực: {formatDuration(activeWorkDurationMs)}
+              </span>
+            </div>
+          )}
         </div>
 
         {/* Big Earnings Highlight Card */}
@@ -96,8 +121,13 @@ export default function CheckoutModal({ shift, onConfirmCheckout, onClose }) {
           <div className="flex items-center justify-center gap-4 mt-3 pt-3 border-t border-slate-700/60 text-xs text-slate-300">
             <span>TB/đơn: <strong className="text-emerald-400 font-bold">{formatVND(avgPerOrder)}</strong></span>
             <span>•</span>
-            <span>TB/giờ: <strong className="text-emerald-400 font-bold">{formatVND(avgPerHour)}/h</strong></span>
+            <span>TB/giờ chạy: <strong className="text-emerald-400 font-bold">{formatVND(avgPerHour)}/h</strong></span>
           </div>
+          {breakDurationMs > 60000 && (
+            <p className="text-[10px] text-slate-400 mt-1.5 italic">
+              *(Đã tự động loại trừ {formatDuration(breakDurationMs)} tạm nghỉ để tính đúng thu nhập TB/h)*
+            </p>
+          )}
         </div>
 
         {/* Quick Stats Grid */}

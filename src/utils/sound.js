@@ -122,6 +122,56 @@ class SoundManager {
     }
   }
 
+  // Bắt đầu tạm nghỉ
+  playBreak() {
+    if (!this.enabled) return;
+    this.init();
+    this.vibrate([40, 40]);
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(659.25, now); // E5
+      osc.frequency.setValueAtTime(523.25, now + 0.12); // C5
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.35);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.35);
+    } catch (e) {
+      console.warn(e);
+    }
+  }
+
+  // Kết thúc nghỉ, quay lại chạy
+  playResume() {
+    if (!this.enabled) return;
+    this.init();
+    this.vibrate([30, 40, 60]);
+    if (!this.ctx) return;
+
+    try {
+      const now = this.ctx.currentTime;
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(523.25, now); // C5
+      osc.frequency.setValueAtTime(659.25, now + 0.1); // E5
+      gain.gain.setValueAtTime(0.25, now);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + 0.3);
+      osc.connect(gain);
+      gain.connect(this.ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.3);
+    } catch (e) {
+      console.warn(e);
+    }
+  }
+
   // Kết thúc ca: Âm thanh chiến thắng hào hứng
   playCheckout() {
     if (!this.enabled) return;

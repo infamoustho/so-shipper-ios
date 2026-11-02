@@ -35,10 +35,17 @@ export default function Header({
             <div className="flex items-center gap-1.5">
               <h1 className="font-bold text-lg text-white tracking-tight">Sổ Shipper</h1>
               {activeShift && (
-                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
-                  Đang chạy
-                </span>
+                activeShift.isOnBreak ? (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
+                    ☕ Tạm nghỉ
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" />
+                    Đang chạy
+                  </span>
+                )
               )}
             </div>
             <p className="text-xs text-slate-400 flex items-center gap-1">

@@ -11,7 +11,10 @@ import {
   XCircle,
   ExternalLink,
   ChevronRight,
-  Trash2
+  Trash2,
+  Coffee,
+  Play,
+  TrendingUp
 } from 'lucide-react';
 import { formatVND, formatTime, formatDuration } from '../utils/storage';
 import { formatDistance, getMapUrl } from '../utils/geo';
@@ -25,6 +28,7 @@ export default function ActiveShift({
   onCancelDeliveringOrder,
   onDeleteOrder,
   onRequestCheckout,
+  onToggleBreak,
   gpsLoading,
 }) {
   // Live elapsed timer for shift
@@ -41,7 +45,14 @@ export default function ActiveShift({
   const totalOrders = orders.length;
   const totalFee = orders.reduce((sum, o) => sum + (o.fee || 0), 0);
   const totalDistance = orders.reduce((sum, o) => sum + (o.distanceKm || 0), 0);
+  
   const shiftDurationMs = now - (shift.startTime || now);
+  const currentBreakMs = shift.isOnBreak && shift.breakStartTime ? (now - shift.breakStartTime) : 0;
+  const totalBreakMs = (shift.totalBreakDurationMs || 0) + currentBreakMs;
+  const activeWorkDurationMs = Math.max(0, shiftDurationMs - totalBreakMs);
+  
+  const activeHours = activeWorkDurationMs / (1000 * 60 * 60);
+  const avgPerHour = activeHours > 0 ? Math.round(totalFee / activeHours) : totalFee;
 
   const deliveringDurationMs = currentDeliveringOrder 
     ? now - (currentDeliveringOrder.pickupTime || now) 
@@ -54,11 +65,19 @@ export default function ActiveShift({
         <div className="flex items-center justify-between pb-3 border-b border-slate-800 text-xs">
           <div className="flex items-center gap-1.5 text-slate-400">
             <Clock className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Bắt đầu lúc: <strong className="text-white">{formatTime(shift.startTime)}</strong></span>
+            <span>Bắt đầu: <strong className="text-white">{formatTime(shift.startTime)}</strong></span>
           </div>
-          <div className="flex items-center gap-1 font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20 text-xs">
-            <span>⏱️</span>
-            <span>{formatDuration(shiftDurationMs)}</span>
+
+          <div className="flex items-center gap-1.5">
+            {totalBreakMs > 60000 && (
+              <span className="text-[11px] font-semibold text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                ☕ Nghỉ: {formatDuration(totalBreakMs)}
+              </span>
+            )}
+            <div className="flex items-center gap-1 font-mono font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20 text-xs">
+              <span>⏱️ Chạy thực:</span>
+              <span>{formatDuration(activeWorkDurationMs)}</span>
+            </div>
           </div>
         </div>
 
@@ -90,6 +109,17 @@ export default function ActiveShift({
               {totalDistance.toFixed(1)} <span className="text-[10px] font-normal text-slate-400">km</span>
             </p>
           </div>
+        </div>
+
+        {/* Real-time Hourly Earnings Efficiency Pill */}
+        <div className="mt-2.5 pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs px-1 text-slate-300">
+          <span className="flex items-center gap-1 text-slate-400 text-[11px]">
+            <TrendingUp className="w-3.5 h-3.5 text-emerald-400" />
+            Thu nhập trung bình mỗi giờ chạy:
+          </span>
+          <span className="font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-lg border border-emerald-500/20">
+            {formatVND(avgPerHour)}/h
+          </span>
         </div>
       </div>
 
@@ -147,28 +177,62 @@ export default function ActiveShift({
             </button>
           </div>
         </div>
-      ) : (
-        /* Status: RẢNH / CHỜ NHẬN ĐƠN */
-        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-xl text-center">
-          <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
-            Sẵn sàng nhận đơn mới
+      ) : shift.isOnBreak ? (
+        /* Status: ĐANG TẠM NGHỈ */
+        <div className="bg-gradient-to-b from-amber-500/20 via-slate-900 to-slate-900 border-2 border-amber-500/60 rounded-3xl p-5 shadow-2xl text-center">
+          <div className="w-14 h-14 rounded-2xl bg-amber-500/20 text-amber-300 mx-auto flex items-center justify-center text-2xl mb-2">
+            ☕
+          </div>
+          <span className="text-xs font-black uppercase tracking-wider text-amber-400 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20">
+            Đang tạm nghỉ
+          </span>
+          <h3 className="text-xl font-black text-white mt-2">
+            Đã nghỉ: {formatDuration(currentBreakMs)}
+          </h3>
+          <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto mb-4">
+            Thời gian nghỉ được trừ ra, <strong>không làm giảm</strong> tiền trung bình mỗi giờ (TB/h) của bạn.
           </p>
           <button
-            onClick={onAcceptOrder}
-            disabled={gpsLoading}
-            className="w-full py-5 rounded-2xl font-black text-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white shadow-2xl shadow-emerald-500/30 active:scale-[0.98] transition flex items-center justify-center gap-3 disabled:opacity-50"
+            onClick={onToggleBreak}
+            className="w-full py-4.5 rounded-2xl font-black text-xl bg-gradient-to-r from-emerald-500 via-teal-500 to-emerald-400 hover:from-emerald-400 hover:to-teal-300 text-white shadow-xl shadow-emerald-600/30 active:scale-[0.98] transition flex items-center justify-center gap-2.5"
           >
-            {gpsLoading ? (
-              <span className="animate-spin text-2xl">⏳</span>
-            ) : (
-              <span className="text-3xl">🛵</span>
-            )}
-            NHẬN ĐƠN MỚI
+            <Play className="w-6 h-6 fill-white stroke-none" />
+            TIẾP TỤC CHẠY 🛵
           </button>
-          <p className="text-[11px] text-slate-400 mt-2 flex items-center justify-center gap-1">
-            <MapPin className="w-3 h-3 text-emerald-400" />
-            Tự động lưu tọa độ nhận & đo quãng đường khi giao xong
-          </p>
+        </div>
+      ) : (
+        /* Status: RẢNH / CHỜ NHẬN ĐƠN */
+        <div className="bg-slate-900 border border-slate-800 rounded-3xl p-5 shadow-xl text-center space-y-3">
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2">
+              Sẵn sàng nhận đơn mới
+            </p>
+            <button
+              onClick={onAcceptOrder}
+              disabled={gpsLoading}
+              className="w-full py-5 rounded-2xl font-black text-2xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-white shadow-2xl shadow-emerald-500/30 active:scale-[0.98] transition flex items-center justify-center gap-3 disabled:opacity-50"
+            >
+              {gpsLoading ? (
+                <span className="animate-spin text-2xl">⏳</span>
+              ) : (
+                <span className="text-3xl">🛵</span>
+              )}
+              NHẬN ĐƠN MỚI
+            </button>
+            <p className="text-[11px] text-slate-400 mt-2 flex items-center justify-center gap-1">
+              <MapPin className="w-3 h-3 text-emerald-400" />
+              Tự động lưu tọa độ nhận & đo quãng đường khi giao xong
+            </p>
+          </div>
+
+          {/* NÚT TẠM NGHỈ */}
+          <button
+            onClick={onToggleBreak}
+            className="w-full py-3 rounded-2xl bg-slate-800/90 hover:bg-slate-750 border border-slate-700/80 text-amber-300 hover:text-amber-200 font-bold text-sm transition active:scale-[0.98] flex items-center justify-center gap-2 shadow-md"
+          >
+            <Coffee className="w-4 h-4 text-amber-400" />
+            TẠM NGHỈ (Ăn cơm / Uống nước / Đợi đơn)
+          </button>
         </div>
       )}
 
