@@ -28,13 +28,14 @@ jobs:
       - name: Build Web Production Assets
         run: npm run build
 
-      - name: Copy Assets to Capacitor iOS
-        run: npx cap copy ios
-
-      - name: Select Xcode Version
+      - name: Copy Assets to iOS Bundle
         run: |
-          sudo xcode-select -switch /Applications/Xcode_15.4.app/Contents/Developer || sudo xcode-select -switch /Applications/Xcode.app/Contents/Developer
-          xcodebuild -version
+          mkdir -p ios/App/App/public
+          cp -R dist/* ios/App/App/public/
+          ls -la ios/App/App/public
+
+      - name: Display Xcode Version
+        run: xcodebuild -version
 
       - name: Build iOS App (.app) without Code Signing
         run: |
@@ -54,7 +55,7 @@ jobs:
           mkdir -p Payload
           cp -r ios/App/build/Build/Products/Release-iphoneos/App.app Payload/
           zip -r -y SoShipper.ipa Payload
-          echo "=== IPA PACKAGE SUCCESS ==="
+          echo "=== BUILD AND PACKAGING COMPLETED ==="
           ls -lh SoShipper.ipa
 
       - name: Upload IPA to GitHub Artifacts
