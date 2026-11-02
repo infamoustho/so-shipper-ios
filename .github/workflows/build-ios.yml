@@ -28,10 +28,12 @@ jobs:
       - name: Build Web Production Assets
         run: npm run build
 
-      - name: Copy Assets to iOS Bundle
+      - name: Copy Assets and Config to iOS Bundle
         run: |
           mkdir -p ios/App/App/public
           cp -R dist/* ios/App/App/public/
+          cp capacitor.config.json ios/App/App/capacitor.config.json || true
+          ls -la ios/App/App
 
       - name: Display Xcode Version
         run: xcodebuild -version
