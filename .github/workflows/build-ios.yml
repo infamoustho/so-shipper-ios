@@ -43,6 +43,7 @@ jobs:
 
       - name: Build iOS App (.app) without Code Signing
         run: |
+          set -o pipefail
           cd ios/App
           xcodebuild clean build \
             -project App.xcodeproj \
@@ -54,7 +55,7 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGN_ENTITLEMENTS="" \
-            CODE_SIGNING_INJECT_BASE_ENTITLEMENTS=NO
+            CODE_SIGNING_INJECT_BASE_ENTITLEMENTS=NO 2>&1 | tee build.log || { echo "=== XCODEBUILD FAILED LOG ==="; grep -E "error:" build.log || tail -n 60 build.log; exit 1; }
 
       - name: Package App into IPA
         run: |
