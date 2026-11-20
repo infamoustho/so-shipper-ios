@@ -20,7 +20,14 @@ import {
   X
 } from 'lucide-react';
 import { formatVND, formatTime, formatDuration } from '../utils/storage';
-import { formatDistance, getMapUrl, openGoogleMapsNavigation, openAppleMapsNavigation } from '../utils/geo';
+import { 
+  formatDistance, 
+  getMapUrl, 
+  openGoogleMapsNavigation, 
+  openAppleMapsNavigation,
+  parseLocationInput,
+  isCoordinateString 
+} from '../utils/geo';
 import { sound } from '../utils/sound';
 
 export default function ActiveShift({
@@ -72,18 +79,19 @@ export default function ActiveShift({
     });
   };
 
-  // Handle paste address from clipboard
+  // Handle paste address from clipboard (supports Universal Clipboard across devices!)
   const handlePasteAddress = async () => {
     sound.playTap();
     try {
       if (navigator.clipboard && navigator.clipboard.readText) {
         const text = await navigator.clipboard.readText();
         if (text && text.trim()) {
-          handleUpdateAddress(text.trim());
+          const parsed = parseLocationInput(text.trim());
+          handleUpdateAddress(parsed);
           return;
         }
       }
-      alert('Không có nội dung địa chỉ trong bộ nhớ tạm. Hãy sao chép địa chỉ từ Zalo/tin nhắn trước nhé!');
+      alert('Không có nội dung địa chỉ trong bộ nhớ tạm. Hãy sao chép địa chỉ hoặc link vị trí từ máy kia trước nhé!');
     } catch (err) {
       alert('Vui lòng cấp quyền dán hoặc giữ tay vào ô để dán trực tiếp!');
     }
@@ -219,7 +227,7 @@ export default function ActiveShift({
             <div className="flex items-center gap-1.5">
               <input
                 type="text"
-                placeholder="Ví dụ: Ngõ 105 Doãn Kế Thiện, Cầu Giấy..."
+                placeholder="Ví dụ: Ngõ 105 Doãn Kế Thiện hoặc dán tọa độ..."
                 value={currentDeliveringOrder.destinationAddress || ''}
                 onChange={(e) => handleUpdateAddress(e.target.value)}
                 className="flex-1 bg-slate-900 border border-slate-700/80 focus:border-blue-500 text-white text-xs px-3 py-2.5 rounded-xl outline-none placeholder:text-slate-500"
@@ -227,12 +235,20 @@ export default function ActiveShift({
               <button
                 type="button"
                 onClick={handlePasteAddress}
-                title="Dán địa chỉ từ bộ nhớ tạm"
+                title="Dán nhanh từ máy 1 (Universal Clipboard)"
                 className="px-2.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-bold flex items-center gap-1 shrink-0 active:scale-95 transition"
               >
                 <span>📋 Dán</span>
               </button>
             </div>
+
+            {/* Coordinate tag if detected */}
+            {isCoordinateString(currentDeliveringOrder.destinationAddress) && (
+              <div className="text-[11px] font-semibold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-xl border border-emerald-500/20 flex items-center gap-1">
+                <span>🎯 Tọa độ GPS chuẩn:</span>
+                <span className="font-mono text-emerald-300">{currentDeliveringOrder.destinationAddress}</span>
+              </div>
+            )}
 
             {/* Navigation Buttons */}
             <div className="grid grid-cols-3 gap-2 pt-1">

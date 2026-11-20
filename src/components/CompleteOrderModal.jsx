@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Check, X, MapPin, Navigation, DollarSign, Clock, AlertCircle } from 'lucide-react';
 import { formatVND, formatTime, formatDuration } from '../utils/storage';
-import { formatDistance, openGoogleMapsNavigation } from '../utils/geo';
+import { formatDistance, openGoogleMapsNavigation, parseLocationInput } from '../utils/geo';
 import { sound } from '../utils/sound';
 
 const PRESET_FEES = [5, 10, 15, 20, 25, 30]; // Unit: nghìn đồng (5 = 5.000đ)
@@ -109,7 +109,7 @@ export default function CompleteOrderModal({
             type="text"
             placeholder="Chưa có địa chỉ ngõ (bấm để thêm nếu muốn lưu)..."
             value={destinationAddress}
-            onChange={(e) => setDestinationAddress(e.target.value)}
+            onChange={(e) => setDestinationAddress(parseLocationInput(e.target.value))}
             className="w-full bg-slate-900/80 border border-slate-700 text-white text-xs px-2.5 py-1.5 rounded-xl outline-none focus:border-blue-500"
           />
         </div>

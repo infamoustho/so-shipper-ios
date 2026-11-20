@@ -81,6 +81,45 @@ export function formatDistance(km) {
 }
 
 /**
+ * Check if a string is raw coordinates "lat,lng"
+ */
+export function isCoordinateString(str) {
+  if (!str || typeof str !== 'string') return false;
+  return /^-?\d{1,2}\.\d+,-?\d{1,3}\.\d+$/.test(str.trim().replace(/\s+/g, ''));
+}
+
+/**
+ * Smart location input parser.
+ * Automatically extracts coordinates from Google Maps links, Apple Maps links,
+ * Zalo shared location texts, or raw coordinate formats.
+ */
+export function parseLocationInput(input) {
+  if (!input || typeof input !== 'string') return '';
+  const raw = input.trim();
+
+  // 1. Google Maps / Apple Maps link containing coordinates:
+  // e.g. ?q=21.028511,105.854201 or @21.028511,105.854201 or ?ll=21.028511,105.854201
+  const linkCoordMatch = raw.match(/(?:q=|ll=|@|\/place\/)(-?\d+\.\d+)[,\s]+(-?\d+\.\d+)/);
+  if (linkCoordMatch) {
+    return `${linkCoordMatch[1]},${linkCoordMatch[2]}`;
+  }
+
+  // 2. Raw coordinates: "21.028511, 105.854201" or "21.028511 105.854201"
+  const plainCoordMatch = raw.match(/(-?\d{1,2}\.\d{3,})[,\s]+(-?\d{1,3}\.\d{3,})/);
+  if (plainCoordMatch) {
+    return `${plainCoordMatch[1]},${plainCoordMatch[2]}`;
+  }
+
+  // 3. Clean common message prefixes (e.g. "Địa chỉ: Ngõ 105...")
+  const prefixMatch = raw.match(/(?:địa chỉ|giao tại|vị trí|đến):\s*(.+)$/i);
+  if (prefixMatch && prefixMatch[1]) {
+    return prefixMatch[1].trim();
+  }
+
+  return raw;
+}
+
+/**
  * Generate map route link for two coordinates (used in order history)
  */
 export function getMapUrl(from, to) {
@@ -99,13 +138,18 @@ export function getMapUrl(from, to) {
 /**
  * Open Google Maps app directly for turn-by-turn driving navigation.
  * Accepts:
- *  - destination: address string (e.g. "Ngõ 105 Doãn Kế Thiện") or coordinate object {lat, lng}
+ *  - destination: address string, coordinate string "lat,lng", or coordinate object {lat, lng}
  * Works completely OFFLINE if the shipper has saved the offline area in Google Maps!
  */
 export function openGoogleMapsNavigation(destination) {
   let query = '';
   if (typeof destination === 'string' && destination.trim()) {
-    query = encodeURIComponent(destination.trim());
+    const trimmed = destination.trim();
+    if (isCoordinateString(trimmed)) {
+      query = trimmed.replace(/\s+/g, '');
+    } else {
+      query = encodeURIComponent(trimmed);
+    }
   } else if (destination && destination.lat && destination.lng) {
     query = `${destination.lat},${destination.lng}`;
   }
@@ -149,7 +193,12 @@ export function openGoogleMapsNavigation(destination) {
 export function openAppleMapsNavigation(destination) {
   let query = '';
   if (typeof destination === 'string' && destination.trim()) {
-    query = encodeURIComponent(destination.trim());
+    const trimmed = destination.trim();
+    if (isCoordinateString(trimmed)) {
+      query = trimmed.replace(/\s+/g, '');
+    } else {
+      query = encodeURIComponent(trimmed);
+    }
   } else if (destination && destination.lat && destination.lng) {
     query = `${destination.lat},${destination.lng}`;
   }
