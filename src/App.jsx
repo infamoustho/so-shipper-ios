@@ -128,6 +128,7 @@ export default function App() {
       orderNumber: nextOrderNumber,
       pickupTime: Date.now(),
       pickupCoords: null,
+      destinationAddress: '',
     };
 
     // Fast state update
@@ -191,8 +192,19 @@ export default function App() {
     }
   };
 
+  // CẬP NHẬT THÔNG TIN ĐƠN ĐANG GIAO (Ví dụ: địa chỉ khách gõ / dán)
+  const handleUpdateDeliveringOrder = (updatedOrder) => {
+    setCurrentDeliveringOrder(updatedOrder);
+    if (activeShift) {
+      updateActiveShift({
+        ...activeShift,
+        deliveringOrder: updatedOrder,
+      });
+    }
+  };
+
   // XÁC NHẬN LƯU ĐƠN (Sau khi chọn 5k, 10k, 15k... hoặc nhập số)
-  const handleConfirmOrder = ({ fee, distanceKm, note }) => {
+  const handleConfirmOrder = ({ fee, distanceKm, note, destinationAddress }) => {
     if (!currentDeliveringOrder || !activeShift) return;
 
     const completedOrder = {
@@ -202,6 +214,9 @@ export default function App() {
       distanceKm: distanceKm || 0,
       fee: fee,
       note: note || '',
+      destinationAddress: destinationAddress !== undefined 
+        ? destinationAddress 
+        : (currentDeliveringOrder.destinationAddress || ''),
     };
 
     const newOrders = [...(activeShift.orders || []), completedOrder];
@@ -297,6 +312,7 @@ export default function App() {
             <ActiveShift
               shift={activeShift}
               currentDeliveringOrder={currentDeliveringOrder}
+              onUpdateDeliveringOrder={handleUpdateDeliveringOrder}
               onAcceptOrder={handleAcceptOrder}
               onStartCompleteOrder={handleStartCompleteOrder}
               onCancelDeliveringOrder={handleCancelDeliveringOrder}

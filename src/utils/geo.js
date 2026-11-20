@@ -81,13 +81,80 @@ export function formatDistance(km) {
 }
 
 /**
- * Generate map route link (Apple Maps on iOS / Google Maps)
+ * Generate map route link for two coordinates (used in order history)
  */
 export function getMapUrl(from, to) {
-  if (!from || !to) return null;
+  if (!to && !from) return null;
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-  if (isIOS) {
-    return `http://maps.apple.com/?saddr=${from.lat},${from.lng}&daddr=${to.lat},${to.lng}&dirflg=d`;
+  if (from && to) {
+    if (isIOS) {
+      return `http://maps.apple.com/?saddr=${from.lat},${from.lng}&daddr=${to.lat},${to.lng}&dirflg=d`;
+    }
+    return `https://www.google.com/maps/dir/?api=1&origin=${from.lat},${from.lng}&destination=${to.lat},${to.lng}&travelmode=driving`;
   }
-  return `https://www.google.com/maps/dir/?api=1&origin=${from.lat},${from.lng}&destination=${to.lat},${to.lng}&travelmode=driving`;
+  const target = to || from;
+  return `https://www.google.com/maps/search/?api=1&query=${target.lat},${target.lng}`;
+}
+
+/**
+ * Open Google Maps app directly for turn-by-turn driving navigation.
+ * Accepts:
+ *  - destination: address string (e.g. "Ngõ 105 Doãn Kế Thiện") or coordinate object {lat, lng}
+ * Works completely OFFLINE if the shipper has saved the offline area in Google Maps!
+ */
+export function openGoogleMapsNavigation(destination) {
+  let query = '';
+  if (typeof destination === 'string' && destination.trim()) {
+    query = encodeURIComponent(destination.trim());
+  } else if (destination && destination.lat && destination.lng) {
+    query = `${destination.lat},${destination.lng}`;
+  }
+
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  
+  if (!query) {
+    // If no address provided, open Google Maps app home screen so shipper can search manually
+    if (isIOS) {
+      window.location.href = 'comgooglemaps://';
+    } else {
+      window.open('https://www.google.com/maps', '_blank');
+    }
+    return;
+  }
+
+  const appSchemeUrl = `comgooglemaps://?daddr=${query}&directionsmode=driving`;
+  const webUrl = `https://www.google.com/maps/dir/?api=1&destination=${query}&travelmode=driving`;
+
+  if (isIOS) {
+    // Attempt opening the native Google Maps app directly
+    const start = Date.now();
+    window.location.href = appSchemeUrl;
+
+    // Graceful fallback to web after timeout if Google Maps is not installed
+    setTimeout(() => {
+      if (document.hidden) return;
+      if (Date.now() - start < 2000) {
+        window.open(webUrl, '_blank');
+      }
+    }, 1500);
+  } else {
+    // Android or Desktop
+    window.open(webUrl, '_blank');
+  }
+}
+
+/**
+ * Open Apple Maps navigation (built into every iPhone)
+ */
+export function openAppleMapsNavigation(destination) {
+  let query = '';
+  if (typeof destination === 'string' && destination.trim()) {
+    query = encodeURIComponent(destination.trim());
+  } else if (destination && destination.lat && destination.lng) {
+    query = `${destination.lat},${destination.lng}`;
+  }
+  if (!query) return;
+
+  const appleUrl = `http://maps.apple.com/?daddr=${query}&dirflg=d`;
+  window.location.href = appleUrl;
 }

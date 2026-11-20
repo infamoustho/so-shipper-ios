@@ -50,5 +50,9 @@ Vì bạn đã có sẵn phương thức sign không cần chứng chỉ của A
 - **Nhận & Hoàn thành đơn**:
   - Tự động lấy tọa độ GPS điểm nhận & điểm trả.
   - Tự tính quãng đường (km) của chuyến đi.
+  - **Tích hợp Google Maps tìm ngõ & chỉ đường**:
+    - Nhập hoặc bấm nút **📋 Dán** nhanh địa chỉ từ tin nhắn Zalo/khách hàng.
+    - 1 chạm mở thẳng app **Google Maps** dẫn đường xe máy (hỗ trợ **Offline** hoàn toàn nếu đã tải bản đồ ngoại tuyến).
+    - Hỗ trợ thêm tùy chọn mở bằng **Apple Maps**.
   - Chọn nhanh tiền ship 1 chạm: **5k, 10k, 15k, 20k, 25k, 30k** hoặc gõ tùy ý theo đơn vị nghìn đồng.
 - **Check-out cuối ngày**: Báo cáo tổng số đơn, tổng tiền, tổng quãng đường đã chạy, xuất báo cáo gửi Zalo và xuất file Excel CSV.

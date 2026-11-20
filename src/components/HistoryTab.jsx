@@ -10,7 +10,8 @@ import {
   Share2, 
   FileSpreadsheet, 
   Trash2,
-  Check
+  Check,
+  MapPin
 } from 'lucide-react';
 import { 
   formatVND, 
@@ -21,7 +22,7 @@ import {
   exportShiftToCSV, 
   deleteShiftFromHistory 
 } from '../utils/storage';
-import { formatDistance } from '../utils/geo';
+import { formatDistance, openGoogleMapsNavigation } from '../utils/geo';
 import { sound } from '../utils/sound';
 
 export default function HistoryTab({ history, onHistoryUpdate }) {
@@ -200,13 +201,21 @@ export default function HistoryTab({ history, onHistoryUpdate }) {
                     {/* Orders list in this shift */}
                     <div className="divide-y divide-slate-850 pt-1">
                       {orders.map((o, idx) => (
-                        <div key={idx} className="py-2 flex items-center justify-between text-xs">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-slate-400">#{o.orderNumber || idx + 1}</span>
-                            <span className="text-slate-300 font-semibold">{formatTime(o.pickupTime)} - {formatTime(o.deliveryTime)}</span>
-                            {o.note && <span className="text-slate-500 italic">({o.note})</span>}
+                        <div key={idx} className="py-2.5 flex items-center justify-between text-xs gap-2">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-slate-400">#{o.orderNumber || idx + 1}</span>
+                              <span className="text-slate-300 font-semibold">{formatTime(o.pickupTime)} - {formatTime(o.deliveryTime)}</span>
+                              {o.note && <span className="text-slate-500 italic">({o.note})</span>}
+                            </div>
+                            {o.destinationAddress && (
+                              <div className="text-[11px] text-blue-300 flex items-center gap-1 mt-0.5 truncate">
+                                <MapPin className="w-3 h-3 text-rose-400 shrink-0" />
+                                <span className="truncate">{o.destinationAddress}</span>
+                              </div>
+                            )}
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-2 shrink-0">
                             {o.distanceKm > 0 && (
                               <span className="text-[11px] text-slate-400">
                                 {formatDistance(o.distanceKm)}
@@ -215,6 +224,15 @@ export default function HistoryTab({ history, onHistoryUpdate }) {
                             <span className="font-bold text-emerald-400">
                               {formatVND(o.fee)}
                             </span>
+                            {o.destinationAddress && (
+                              <button
+                                onClick={() => openGoogleMapsNavigation(o.destinationAddress)}
+                                className="p-1 rounded-md bg-blue-500/10 text-blue-400 hover:bg-blue-500/20"
+                                title="Chỉ đường Google Maps"
+                              >
+                                <Navigation className="w-3 h-3" />
+                              </button>
+                            )}
                           </div>
                         </div>
                       ))}

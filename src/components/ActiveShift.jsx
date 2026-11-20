@@ -14,15 +14,19 @@ import {
   Trash2,
   Coffee,
   Play,
-  TrendingUp
+  TrendingUp,
+  ClipboardPaste,
+  HelpCircle,
+  X
 } from 'lucide-react';
 import { formatVND, formatTime, formatDuration } from '../utils/storage';
-import { formatDistance, getMapUrl } from '../utils/geo';
+import { formatDistance, getMapUrl, openGoogleMapsNavigation, openAppleMapsNavigation } from '../utils/geo';
 import { sound } from '../utils/sound';
 
 export default function ActiveShift({
   shift,
   currentDeliveringOrder,
+  onUpdateDeliveringOrder,
   onAcceptOrder,
   onStartCompleteOrder,
   onCancelDeliveringOrder,
@@ -33,6 +37,7 @@ export default function ActiveShift({
 }) {
   // Live elapsed timer for shift
   const [now, setNow] = useState(Date.now());
+  const [showOfflineGuide, setShowOfflineGuide] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -57,6 +62,46 @@ export default function ActiveShift({
   const deliveringDurationMs = currentDeliveringOrder 
     ? now - (currentDeliveringOrder.pickupTime || now) 
     : 0;
+
+  // Handle changing address for current delivering order
+  const handleUpdateAddress = (val) => {
+    if (!currentDeliveringOrder || !onUpdateDeliveringOrder) return;
+    onUpdateDeliveringOrder({
+      ...currentDeliveringOrder,
+      destinationAddress: val,
+    });
+  };
+
+  // Handle paste address from clipboard
+  const handlePasteAddress = async () => {
+    sound.playTap();
+    try {
+      if (navigator.clipboard && navigator.clipboard.readText) {
+        const text = await navigator.clipboard.readText();
+        if (text && text.trim()) {
+          handleUpdateAddress(text.trim());
+          return;
+        }
+      }
+      alert('Không có nội dung địa chỉ trong bộ nhớ tạm. Hãy sao chép địa chỉ từ Zalo/tin nhắn trước nhé!');
+    } catch (err) {
+      alert('Vui lòng cấp quyền dán hoặc giữ tay vào ô để dán trực tiếp!');
+    }
+  };
+
+  // Trigger Google Maps Navigation
+  const handleOpenGoogleMaps = (dest) => {
+    sound.playTap();
+    const target = dest !== undefined ? dest : currentDeliveringOrder?.destinationAddress;
+    openGoogleMapsNavigation(target);
+  };
+
+  // Trigger Apple Maps Navigation
+  const handleOpenAppleMaps = (dest) => {
+    sound.playTap();
+    const target = dest !== undefined ? dest : currentDeliveringOrder?.destinationAddress;
+    openAppleMapsNavigation(target);
+  };
 
   return (
     <div className="space-y-4">
@@ -152,6 +197,79 @@ export default function ActiveShift({
             )}
           </p>
 
+          {/* SECTION: TÌM ĐƯỜNG & CHỈ ĐƯỜNG GOOGLE MAPS */}
+          <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-3.5 mb-4 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <label className="text-[11px] font-bold uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+                <MapPin className="w-3.5 h-3.5 text-rose-400" />
+                Địa chỉ / Ngõ giao hàng:
+              </label>
+              {currentDeliveringOrder.destinationAddress && (
+                <button
+                  type="button"
+                  onClick={() => handleUpdateAddress('')}
+                  className="text-[10px] text-slate-400 hover:text-red-400 px-1"
+                >
+                  Xóa
+                </button>
+              )}
+            </div>
+
+            {/* Address input + Quick Paste Button */}
+            <div className="flex items-center gap-1.5">
+              <input
+                type="text"
+                placeholder="Ví dụ: Ngõ 105 Doãn Kế Thiện, Cầu Giấy..."
+                value={currentDeliveringOrder.destinationAddress || ''}
+                onChange={(e) => handleUpdateAddress(e.target.value)}
+                className="flex-1 bg-slate-900 border border-slate-700/80 focus:border-blue-500 text-white text-xs px-3 py-2.5 rounded-xl outline-none placeholder:text-slate-500"
+              />
+              <button
+                type="button"
+                onClick={handlePasteAddress}
+                title="Dán địa chỉ từ bộ nhớ tạm"
+                className="px-2.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-slate-200 text-xs font-bold flex items-center gap-1 shrink-0 active:scale-95 transition"
+              >
+                <span>📋 Dán</span>
+              </button>
+            </div>
+
+            {/* Navigation Buttons */}
+            <div className="grid grid-cols-3 gap-2 pt-1">
+              {/* Google Maps Main Button */}
+              <button
+                type="button"
+                onClick={() => handleOpenGoogleMaps()}
+                className="col-span-2 py-2.5 px-3 rounded-xl bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-500 hover:from-blue-500 hover:to-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-blue-600/30 active:scale-[0.98] transition"
+              >
+                <Navigation className="w-4 h-4 fill-white text-white shrink-0" />
+                <span className="truncate">CHỈ ĐƯỜNG GOOGLE MAPS</span>
+              </button>
+
+              {/* Apple Maps Secondary Button */}
+              <button
+                type="button"
+                onClick={() => handleOpenAppleMaps()}
+                title="Mở bằng Apple Maps"
+                className="col-span-1 py-2.5 px-2 rounded-xl bg-slate-850 hover:bg-slate-800 border border-slate-700 text-slate-300 text-xs font-semibold flex items-center justify-center gap-1 active:scale-[0.98] transition truncate"
+              >
+                <span>🍎 Apple</span>
+              </button>
+            </div>
+
+            {/* Offline Info link */}
+            <div className="flex items-center justify-between text-[11px] text-slate-400 pt-0.5">
+              <span>💡 Dẫn đường <strong>Offline</strong> nếu đã tải Maps</span>
+              <button
+                type="button"
+                onClick={() => setShowOfflineGuide(true)}
+                className="text-blue-400 hover:text-blue-300 font-semibold underline flex items-center gap-0.5"
+              >
+                <HelpCircle className="w-3 h-3" /> Cách tải
+              </button>
+            </div>
+          </div>
+
           {/* Big Complete Order Button */}
           <button
             onClick={onStartCompleteOrder}
@@ -221,7 +339,7 @@ export default function ActiveShift({
             </button>
             <p className="text-[11px] text-slate-400 mt-2 flex items-center justify-center gap-1">
               <MapPin className="w-3 h-3 text-emerald-400" />
-              Tự động lưu tọa độ nhận & đo quãng đường khi giao xong
+              Tự động lưu tọa độ nhận, có thể mở Google Maps tìm ngõ & chỉ đường
             </p>
           </div>
 
@@ -263,7 +381,7 @@ export default function ActiveShift({
               return (
                 <div key={order.id} className="py-3 flex items-center justify-between group">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-xl bg-slate-800 border border-slate-700/60 flex items-center justify-center text-xs font-black text-slate-300">
+                    <div className="w-9 h-9 rounded-xl bg-slate-800 border border-slate-700/60 flex items-center justify-center text-xs font-black text-slate-300 shrink-0">
                       #{order.orderNumber}
                     </div>
                     <div>
@@ -277,15 +395,28 @@ export default function ActiveShift({
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-0.5">
+                      <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-0.5 flex-wrap">
                         <span>{formatTime(order.pickupTime)} – {formatTime(order.deliveryTime)}</span>
+                        {order.destinationAddress && (
+                          <span className="text-blue-300 font-medium">
+                            📍 {order.destinationAddress}
+                          </span>
+                        )}
                         {order.note && <span className="text-slate-300">• {order.note}</span>}
                       </div>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-1.5">
-                    {mapUrl && (
+                    {order.destinationAddress ? (
+                      <button
+                        onClick={() => handleOpenGoogleMaps(order.destinationAddress)}
+                        className="p-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 border border-blue-500/20 transition"
+                        title="Mở chỉ đường Google Maps"
+                      >
+                        <Navigation className="w-3.5 h-3.5" />
+                      </button>
+                    ) : mapUrl ? (
                       <a
                         href={mapUrl}
                         target="_blank"
@@ -295,7 +426,7 @@ export default function ActiveShift({
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
                       </a>
-                    )}
+                    ) : null}
                     <button
                       onClick={() => onDeleteOrder(order.id)}
                       className="p-1.5 rounded-lg bg-slate-800 hover:bg-red-500/20 text-slate-500 hover:text-red-400 transition"
@@ -321,6 +452,47 @@ export default function ActiveShift({
           KẾT THÚC CA LÀM VIỆC (CHECK-OUT)
         </button>
       </div>
+
+      {/* POPUP HƯỚNG DẪN TẢI GOOGLE MAPS OFFLINE */}
+      {showOfflineGuide && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in">
+          <div className="w-full max-w-sm bg-slate-900 border border-slate-700 rounded-3xl p-5 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-slate-800">
+              <h3 className="font-bold text-base text-white flex items-center gap-2">
+                <span>🗺️ Tải Maps Offline</span>
+              </h3>
+              <button
+                onClick={() => setShowOfflineGuide(false)}
+                className="p-1 rounded-full text-slate-400 hover:text-white bg-slate-800"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Để Google Maps chỉ đường tìm ngõ <strong className="text-emerald-400">hoàn toàn không cần 4G</strong>, bạn làm theo 4 bước sau (chỉ làm 1 lần):
+            </p>
+
+            <ol className="text-xs text-slate-300 space-y-2 list-decimal list-inside bg-slate-950/60 p-3 rounded-2xl border border-slate-800">
+              <li>Mở app <strong className="text-white">Google Maps</strong> trên iPhone.</li>
+              <li>Bấm vào <strong className="text-white">Ảnh đại diện (avatar)</strong> góc trên bên phải.</li>
+              <li>Chọn mục <strong className="text-white">Bản đồ ngoại tuyến (Offline maps)</strong>.</li>
+              <li>Chọn <strong className="text-blue-400">Chọn bản đồ riêng của bạn</strong>, căn khung vùng bạn hay chạy rồi bấm <strong className="text-emerald-400">Tải xuống</strong>.</li>
+            </ol>
+
+            <p className="text-[11px] text-amber-300/90 italic">
+              ✨ Xong! Sau khi tải, app Sổ Shipper sẽ gọi Google Maps chỉ đường & ngõ sâu mượt mà kể cả khi tắt mạng.
+            </p>
+
+            <button
+              onClick={() => setShowOfflineGuide(false)}
+              className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-500 font-bold text-white text-xs transition"
+            >
+              Đã hiểu, quay lại app
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -159,10 +159,11 @@ Ghi chú từ Sổ Shipper 🛵`;
 
 // Export Shift to CSV
 export function exportShiftToCSV(shift) {
-  const headers = ['STT', 'Mã đơn', 'Giờ nhận', 'Giờ trả', 'Quãng đường (km)', 'Tiền ship (VND)', 'Ghi chú'];
+  const headers = ['STT', 'Mã đơn', 'Địa chỉ giao', 'Giờ nhận', 'Giờ trả', 'Quãng đường (km)', 'Tiền ship (VND)', 'Ghi chú'];
   const rows = (shift.orders || []).map((o, idx) => [
     idx + 1,
     `Đơn #${o.orderNumber || idx + 1}`,
+    `"${(o.destinationAddress || '').replace(/"/g, '""')}"`,
     formatTime(o.pickupTime),
     formatTime(o.deliveryTime),
     (o.distanceKm || 0).toFixed(1),

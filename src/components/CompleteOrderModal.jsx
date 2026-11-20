@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Check, X, MapPin, Navigation, DollarSign, Clock, AlertCircle } from 'lucide-react';
 import { formatVND, formatTime, formatDuration } from '../utils/storage';
-import { formatDistance } from '../utils/geo';
+import { formatDistance, openGoogleMapsNavigation } from '../utils/geo';
 import { sound } from '../utils/sound';
 
 const PRESET_FEES = [5, 10, 15, 20, 25, 30]; // Unit: nghìn đồng (5 = 5.000đ)
@@ -18,6 +18,7 @@ export default function CompleteOrderModal({
   const [selectedFeeUnits, setSelectedFeeUnits] = useState(20); // Default 20k
   const [customInput, setCustomInput] = useState('');
   const [isCustom, setIsCustom] = useState(false);
+  const [destinationAddress, setDestinationAddress] = useState(order.destinationAddress || '');
   const [note, setNote] = useState('');
   const [manualDistance, setManualDistance] = useState(distanceKm || 0);
 
@@ -56,6 +57,7 @@ export default function CompleteOrderModal({
     onConfirm({
       fee: currentFeeVND,
       distanceKm: parseFloat(manualDistance) || 0,
+      destinationAddress: destinationAddress.trim(),
       note: note.trim(),
     });
   };
@@ -86,8 +88,34 @@ export default function CompleteOrderModal({
           </button>
         </div>
 
+        {/* Address badge / input */}
+        <div className="mt-3.5 mb-2 bg-slate-800/60 p-2.5 rounded-2xl border border-slate-700/60">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[11px] font-semibold text-slate-400 flex items-center gap-1">
+              <MapPin className="w-3.5 h-3.5 text-rose-400" />
+              Địa chỉ / Ngõ giao:
+            </span>
+            {destinationAddress && (
+              <button
+                type="button"
+                onClick={() => openGoogleMapsNavigation(destinationAddress)}
+                className="text-[10px] font-bold text-blue-400 hover:underline flex items-center gap-0.5"
+              >
+                <Navigation className="w-2.5 h-2.5" /> Xem Google Maps
+              </button>
+            )}
+          </div>
+          <input
+            type="text"
+            placeholder="Chưa có địa chỉ ngõ (bấm để thêm nếu muốn lưu)..."
+            value={destinationAddress}
+            onChange={(e) => setDestinationAddress(e.target.value)}
+            className="w-full bg-slate-900/80 border border-slate-700 text-white text-xs px-2.5 py-1.5 rounded-xl outline-none focus:border-blue-500"
+          />
+        </div>
+
         {/* GPS & Trip Metrics */}
-        <div className="my-3.5 p-3.5 bg-slate-800/60 rounded-2xl border border-slate-700/60 grid grid-cols-2 gap-3 text-center">
+        <div className="mb-3.5 p-3.5 bg-slate-800/60 rounded-2xl border border-slate-700/60 grid grid-cols-2 gap-3 text-center">
           <div className="border-r border-slate-700/60 pr-2">
             <span className="text-xs text-slate-400 flex items-center justify-center gap-1 mb-1">
               <Navigation className="w-3.5 h-3.5 text-blue-400" />
