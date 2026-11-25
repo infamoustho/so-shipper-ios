@@ -41,6 +41,7 @@ export default function CheckoutModal({ shift, onConfirmCheckout, onClose }) {
   const orders = shift.orders || [];
   const totalOrders = orders.length;
   const totalFee = orders.reduce((sum, o) => sum + (o.fee || 0), 0);
+  const totalCod = orders.reduce((sum, o) => sum + (o.codAmount || 0), 0);
   const totalDistance = orders.reduce((sum, o) => sum + (o.distanceKm || 0), 0);
   const avgPerOrder = totalOrders > 0 ? Math.round(totalFee / totalOrders) : 0;
   
@@ -129,6 +130,20 @@ export default function CheckoutModal({ shift, onConfirmCheckout, onClose }) {
             </p>
           )}
         </div>
+
+        {/* COD Summary Card (Only shown if there is COD collected) */}
+        {totalCod > 0 && (
+          <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-3.5 mb-4 space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-amber-300 font-semibold">💵 Tiền thu hộ (COD phải trả shop):</span>
+              <span className="text-base font-black text-amber-300">{formatVND(totalCod)}</span>
+            </div>
+            <div className="flex items-center justify-between text-xs pt-2 border-t border-amber-500/20">
+              <span className="text-slate-300 font-medium">🧾 Tổng tiền mặt (Ship + COD):</span>
+              <span className="text-sm font-bold text-white">{formatVND(totalFee + totalCod)}</span>
+            </div>
+          </div>
+        )}
 
         {/* Quick Stats Grid */}
         <div className="grid grid-cols-2 gap-3 mb-4">

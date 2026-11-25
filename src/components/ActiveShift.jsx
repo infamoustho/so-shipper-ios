@@ -56,6 +56,7 @@ export default function ActiveShift({
   const orders = shift.orders || [];
   const totalOrders = orders.length;
   const totalFee = orders.reduce((sum, o) => sum + (o.fee || 0), 0);
+  const totalCod = orders.reduce((sum, o) => sum + (o.codAmount || 0), 0);
   const totalDistance = orders.reduce((sum, o) => sum + (o.distanceKm || 0), 0);
   
   const shiftDurationMs = now - (shift.startTime || now);
@@ -72,6 +73,18 @@ export default function ActiveShift({
     onUpdateDeliveringOrder({
       ...order,
       destinationAddress: val,
+    });
+  };
+
+  // Handle changing COD amount (in thousands VND) for a specific delivering order
+  const handleUpdateCod = (order, unitsStr) => {
+    if (!order || !onUpdateDeliveringOrder) return;
+    const cleaned = unitsStr.replace(/[^0-9.]/g, '');
+    const codVND = (parseFloat(cleaned) || 0) * 1000;
+    onUpdateDeliveringOrder({
+      ...order,
+      codAmount: codVND,
+      _codInput: cleaned,
     });
   };
 
@@ -168,6 +181,18 @@ export default function ActiveShift({
             {formatVND(avgPerHour)}/h
           </span>
         </div>
+
+        {/* COD (Tiền thu hộ) Pill if > 0 */}
+        {totalCod > 0 && (
+          <div className="mt-2 pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs px-1">
+            <span className="text-amber-300/90 text-[11px] font-medium">
+              💵 Tiền thu hộ (COD đang giữ):
+            </span>
+            <span className="font-black text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-lg border border-amber-500/20">
+              {formatVND(totalCod)}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* DELIVERY ACTION CENTER */}
@@ -282,6 +307,37 @@ export default function ActiveShift({
                       <span className="font-mono text-emerald-300">{order.destinationAddress}</span>
                     </div>
                   )}
+
+                  {/* Quick COD input on active order */}
+                  <div className="flex items-center gap-2 pt-0.5">
+                    <span className="text-[11px] font-semibold text-amber-300 shrink-0">
+                      💵 Thu hộ COD:
+                    </span>
+                    <div className="relative flex-1">
+                      <input
+                        type="number"
+                        inputMode="numeric"
+                        placeholder="0 (vd: 250 = 250k)"
+                        value={
+                          order._codInput !== undefined
+                            ? order._codInput
+                            : order.codAmount > 0
+                            ? String(order.codAmount / 1000)
+                            : ''
+                        }
+                        onChange={(e) => handleUpdateCod(order, e.target.value)}
+                        className="w-full bg-slate-900 border border-slate-700/80 focus:border-amber-400 text-amber-200 font-bold text-xs px-2.5 py-1.5 rounded-lg outline-none placeholder:text-slate-500 placeholder:font-normal"
+                      />
+                      <span className="absolute right-2.5 top-1.5 text-[10px] text-slate-400 font-semibold">
+                        k
+                      </span>
+                    </div>
+                    {order.codAmount > 0 && (
+                      <span className="text-[11px] font-bold text-amber-300 shrink-0">
+                        {formatVND(order.codAmount)}
+                      </span>
+                    )}
+                  </div>
 
                   {/* Navigation Buttons */}
                   <div className="grid grid-cols-3 gap-2 pt-0.5">
@@ -424,10 +480,15 @@ export default function ActiveShift({
                       #{order.orderNumber}
                     </div>
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-black text-emerald-400">
                           +{formatVND(order.fee)}
                         </span>
+                        {order.codAmount > 0 && (
+                          <span className="text-[10px] font-bold text-amber-300 bg-amber-500/10 px-1.5 py-0.2 rounded border border-amber-500/20">
+                            COD {Math.round(order.codAmount / 1000)}k
+                          </span>
+                        )}
                         {order.distanceKm > 0 && (
                           <span className="text-[11px] font-semibold text-slate-400 bg-slate-800/80 px-1.5 py-0.2 rounded border border-slate-700/40">
                             {formatDistance(order.distanceKm)}

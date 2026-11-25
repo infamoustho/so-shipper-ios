@@ -116,6 +116,7 @@ export default function HistoryTab({ history, onHistoryUpdate }) {
             const isExpanded = expandedShiftId === shift.id;
             const orders = shift.orders || [];
             const shiftTotalFee = orders.reduce((sum, o) => sum + (o.fee || 0), 0);
+            const shiftTotalCod = orders.reduce((sum, o) => sum + (o.codAmount || 0), 0);
             const shiftTotalKm = orders.reduce((sum, o) => sum + (o.distanceKm || 0), 0);
             const durationMs = shift.endTime ? shift.endTime - shift.startTime : 0;
             const breakMs = shift.totalBreakDurationMs || 0;
@@ -145,10 +146,11 @@ export default function HistoryTab({ history, onHistoryUpdate }) {
                     <p className="text-xs text-slate-400 mt-0.5">
                       {formatTime(shift.startTime)} – {shift.endTime ? formatTime(shift.endTime) : 'Chưa rõ'} • {shiftTotalKm.toFixed(1)} km
                     </p>
-                    <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-1">
+                    <div className="flex items-center gap-2 text-[10px] text-slate-400 mt-1 flex-wrap">
                       <span>⏱️ Chạy thực: <strong className="text-emerald-400">{formatDuration(activeWorkMs)}</strong></span>
                       {breakMs > 60000 && <span>• ☕ Nghỉ: {formatDuration(breakMs)}</span>}
                       <span>• ⚡ TB: <strong className="text-emerald-400">{formatVND(avgPerHour)}/h</strong></span>
+                      {shiftTotalCod > 0 && <span>• 💵 COD: <strong className="text-amber-300">{formatVND(shiftTotalCod)}</strong></span>}
                     </div>
                   </div>
 
@@ -224,6 +226,11 @@ export default function HistoryTab({ history, onHistoryUpdate }) {
                             <span className="font-bold text-emerald-400">
                               {formatVND(o.fee)}
                             </span>
+                            {o.codAmount > 0 && (
+                              <span className="text-[10px] font-bold text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
+                                COD {Math.round(o.codAmount / 1000)}k
+                              </span>
+                            )}
                             {o.destinationAddress && (
                               <button
                                 onClick={() => openGoogleMapsNavigation(o.destinationAddress)}

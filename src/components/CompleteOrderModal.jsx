@@ -19,6 +19,7 @@ export default function CompleteOrderModal({
   const [customInput, setCustomInput] = useState('');
   const [isCustom, setIsCustom] = useState(false);
   const [destinationAddress, setDestinationAddress] = useState(order.destinationAddress || '');
+  const [codUnits, setCodUnits] = useState(order.codAmount ? String(order.codAmount / 1000) : '');
   const [note, setNote] = useState('');
   const [manualDistance, setManualDistance] = useState(distanceKm || 0);
 
@@ -54,9 +55,11 @@ export default function CompleteOrderModal({
       return;
     }
     sound.playCash();
+    const codVND = (parseFloat(codUnits) || 0) * 1000;
     onConfirm({
       fee: currentFeeVND,
       distanceKm: parseFloat(manualDistance) || 0,
+      codAmount: codVND,
       destinationAddress: destinationAddress.trim(),
       note: note.trim(),
     });
@@ -225,6 +228,33 @@ export default function CompleteOrderModal({
                 </span>
               )}
             </div>
+          </div>
+        </div>
+
+        {/* COD (Thu hộ) Section - Optional */}
+        <div className="mb-3 bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-2xl">
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-xs font-bold text-amber-300">
+              💵 Tiền thu hộ COD (nếu có):
+            </label>
+            {parseFloat(codUnits) > 0 && (
+              <span className="text-xs font-black text-amber-300">
+                = {formatVND((parseFloat(codUnits) || 0) * 1000)}
+              </span>
+            )}
+          </div>
+          <div className="relative">
+            <input
+              type="number"
+              inputMode="numeric"
+              placeholder="Để trống nếu không thu hộ (vd: 250 = 250k)"
+              value={codUnits}
+              onChange={(e) => setCodUnits(e.target.value.replace(/[^0-9.]/g, ''))}
+              className="w-full bg-slate-900/90 border border-slate-700 focus:border-amber-400 text-amber-200 font-bold text-sm px-3 py-2 rounded-xl outline-none placeholder:text-slate-500 placeholder:font-normal placeholder:text-xs"
+            />
+            <span className="absolute right-3 top-2 text-xs text-slate-400 font-semibold">
+              nghìn đ
+            </span>
           </div>
         </div>
 

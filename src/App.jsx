@@ -145,6 +145,7 @@ export default function App() {
       pickupTime: Date.now(),
       pickupCoords: null,
       destinationAddress: '',
+      codAmount: 0,
     };
 
     // Fast state update (append to deliveringOrders)
@@ -226,15 +227,17 @@ export default function App() {
   };
 
   // XÁC NHẬN LƯU ĐƠN (Sau khi chọn 5k, 10k, 15k... hoặc nhập số)
-  const handleConfirmOrder = ({ fee, distanceKm, note, destinationAddress }) => {
+  const handleConfirmOrder = ({ fee, distanceKm, note, destinationAddress, codAmount }) => {
     if (!completingOrder || !activeShift) return;
 
+    const { _codInput, ...cleanCompletingOrder } = completingOrder;
     const completedOrder = {
-      ...completingOrder,
+      ...cleanCompletingOrder,
       deliveryTime: Date.now(),
       deliveryCoords: deliveryCoords,
       distanceKm: distanceKm || 0,
       fee: fee,
+      codAmount: codAmount !== undefined ? codAmount : (completingOrder.codAmount || 0),
       note: note || '',
       destinationAddress: destinationAddress !== undefined 
         ? destinationAddress 

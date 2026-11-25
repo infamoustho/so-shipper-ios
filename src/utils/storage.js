@@ -133,6 +133,7 @@ export function generateShareSummary(shift) {
   const activeDurationMs = Math.max(0, totalDurationMs - breakDurationMs);
   
   const totalFee = (shift.orders || []).reduce((sum, o) => sum + (o.fee || 0), 0);
+  const totalCod = (shift.orders || []).reduce((sum, o) => sum + (o.codAmount || 0), 0);
   const totalDistance = (shift.orders || []).reduce((sum, o) => sum + (o.distanceKm || 0), 0);
   const orderCount = (shift.orders || []).length;
   const avgPerOrder = orderCount > 0 ? Math.round(totalFee / orderCount) : 0;
@@ -144,12 +145,16 @@ export function generateShareSummary(shift) {
     ? `(${formatDuration(totalDurationMs)} • Nghỉ ${formatDuration(breakDurationMs)} • Chạy thực: ${formatDuration(activeDurationMs)})`
     : `(${formatDuration(totalDurationMs)})`;
 
+  const codLines = totalCod > 0
+    ? `\n💵 Tiền thu hộ (COD): ${formatVND(totalCod)}\n🧾 Tổng tiền mặt (Ship + COD): ${formatVND(totalFee + totalCod)}`
+    : '';
+
   return `🛵 TỔNG KẾT CA CHẠY SHIPPER
 📅 Ngày: ${formatDate(shift.startTime)}
 ⏰ Thời gian: ${formatTime(shift.startTime)} - ${shift.endTime ? formatTime(shift.endTime) : 'Hiện tại'} ${timeBreakdown}
 ━━━━━━━━━━━━━━━━━━
 📦 Số đơn hoàn thành: ${orderCount} đơn
-💰 Tổng tiền ship: ${formatVND(totalFee)}
+💰 Tổng tiền ship: ${formatVND(totalFee)}${codLines}
 📍 Tổng quãng đường: ${totalDistance.toFixed(1)} km
 ⭐ Thu nhập TB/giờ chạy: ${formatVND(avgPerHour)}/h
 ⭐ Thu nhập TB/đơn: ${formatVND(avgPerOrder)}
@@ -159,7 +164,7 @@ Ghi chú từ Sổ Shipper 🛵`;
 
 // Export Shift to CSV
 export function exportShiftToCSV(shift) {
-  const headers = ['STT', 'Mã đơn', 'Địa chỉ giao', 'Giờ nhận', 'Giờ trả', 'Quãng đường (km)', 'Tiền ship (VND)', 'Ghi chú'];
+  const headers = ['STT', 'Mã đơn', 'Địa chỉ giao', 'Giờ nhận', 'Giờ trả', 'Quãng đường (km)', 'Tiền ship (VND)', 'Thu hộ COD (VND)', 'Ghi chú'];
   const rows = (shift.orders || []).map((o, idx) => [
     idx + 1,
     `Đơn #${o.orderNumber || idx + 1}`,
@@ -168,6 +173,7 @@ export function exportShiftToCSV(shift) {
     formatTime(o.deliveryTime),
     (o.distanceKm || 0).toFixed(1),
     o.fee || 0,
+    o.codAmount || 0,
     `"${(o.note || '').replace(/"/g, '""')}"`
   ]);
 
