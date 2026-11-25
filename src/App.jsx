@@ -22,7 +22,7 @@ import { Play, Sparkles, MapPin, ShieldCheck, History, ArrowRight } from 'lucide
 export default function App() {
   const [activeTab, setActiveTab] = useState('today'); // 'today' | 'history'
   const [activeShift, setActiveShift] = useState(null);
-  const [currentDeliveringOrder, setCurrentDeliveringOrder] = useState(null);
+  const [completingOrder, setCompletingOrder] = useState(null);
   const [history, setHistory] = useState([]);
   const [soundEnabled, setSoundEnabled] = useState(true);
   
@@ -41,11 +41,17 @@ export default function App() {
   useEffect(() => {
     const savedShift = loadCurrentShift();
     if (savedShift) {
-      setActiveShift(savedShift);
-      // Check if there is an in-progress delivering order
-      if (savedShift.deliveringOrder) {
-        setCurrentDeliveringOrder(savedShift.deliveringOrder);
-      }
+      // Migrate legacy single deliveringOrder into deliveringOrders array
+      const normalizedShift = {
+        ...savedShift,
+        deliveringOrders: Array.isArray(savedShift.deliveringOrders)
+          ? savedShift.deliveringOrders
+          : savedShift.deliveringOrder
+          ? [savedShift.deliveringOrder]
+          : [],
+      };
+      delete normalizedShift.deliveringOrder;
+      setActiveShift(normalizedShift);
     }
 
     const savedHistory = loadShiftHistory();
@@ -63,11 +69,16 @@ export default function App() {
     }
   }, []);
 
-  // Save current shift state whenever it updates
-  const updateActiveShift = (newShiftData) => {
-    setActiveShift(newShiftData);
-    saveCurrentShift(newShiftData);
+  // Save current shift state whenever it updates (supports functional updater)
+  const updateActiveShift = (updater) => {
+    setActiveShift((prev) => {
+      const next = typeof updater === 'function' ? updater(prev) : updater;
+      saveCurrentShift(next);
+      return next;
+    });
   };
+
+  const deliveringOrders = activeShift?.deliveringOrders || [];
 
   // CHECK-IN (Bắt đầu ca)
   const handleCheckin = () => {
@@ -77,7 +88,7 @@ export default function App() {
       startTime: Date.now(),
       endTime: null,
       orders: [],
-      deliveringOrder: null,
+      deliveringOrders: [],
       isOnBreak: false,
       breakStartTime: null,
       totalBreakDurationMs: 0,
@@ -89,8 +100,8 @@ export default function App() {
   const handleToggleBreak = () => {
     if (!activeShift) return;
 
-    if (currentDeliveringOrder) {
-      alert('Bạn đang có đơn chưa hoàn thành! Vui lòng giao xong hoặc hủy đơn trước khi tạm nghỉ.');
+    if (deliveringOrders.length > 0) {
+      alert(`Bạn đang có ${deliveringOrders.length} đơn chưa hoàn thành! Vui lòng giao xong hoặc hủy đơn trước khi tạm nghỉ.`);
       return;
     }
 
@@ -116,41 +127,47 @@ export default function App() {
     }
   };
 
-  // NHẬN ĐƠN MỚI
+  // NHẬN ĐƠN MỚI (Hỗ trợ ghép nhiều đơn cùng lúc)
   const handleAcceptOrder = async () => {
     sound.playAccept();
     setGpsLoading(true);
     
-    // Acquire GPS position (non-blocking if slow)
-    const nextOrderNumber = (activeShift?.orders?.length || 0) + 1;
+    const allOrderNumbers = [
+      ...(activeShift?.orders || []).map(o => o.orderNumber || 0),
+      ...deliveringOrders.map(o => o.orderNumber || 0),
+    ];
+    const nextOrderNumber = (allOrderNumbers.length > 0 ? Math.max(...allOrderNumbers) : 0) + 1;
+    const orderId = 'ord_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+
     const pendingOrder = {
-      id: 'ord_' + Date.now(),
+      id: orderId,
       orderNumber: nextOrderNumber,
       pickupTime: Date.now(),
       pickupCoords: null,
       destinationAddress: '',
     };
 
-    // Fast state update
-    const updatedShift = {
-      ...activeShift,
-      deliveringOrder: pendingOrder,
-    };
-    setCurrentDeliveringOrder(pendingOrder);
-    updateActiveShift(updatedShift);
+    // Fast state update (append to deliveringOrders)
+    updateActiveShift((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        deliveringOrders: [...(prev.deliveringOrders || []), pendingOrder],
+      };
+    });
 
-    // Try to get GPS in background
+    // Try to get GPS in background and patch only this order
     try {
       const geoResult = await getCurrentPosition(6000);
       if (geoResult.success) {
-        const orderWithGps = {
-          ...pendingOrder,
-          pickupCoords: geoResult.coords,
-        };
-        setCurrentDeliveringOrder(orderWithGps);
-        updateActiveShift({
-          ...activeShift,
-          deliveringOrder: orderWithGps,
+        updateActiveShift((prev) => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            deliveringOrders: (prev.deliveringOrders || []).map((o) =>
+              o.id === orderId ? { ...o, pickupCoords: geoResult.coords } : o
+            ),
+          };
         });
       }
     } catch (e) {
@@ -160,9 +177,11 @@ export default function App() {
     }
   };
 
-  // BẤM "HOÀN THÀNH ĐƠN" (Lấy GPS trả đơn & mở Modal chọn tiền phí)
-  const handleStartCompleteOrder = async () => {
+  // BẤM "HOÀN THÀNH ĐƠN" (Lấy GPS trả đơn & mở Modal chọn tiền phí cho đơn được chọn)
+  const handleStartCompleteOrder = async (order) => {
+    if (!order) return;
     sound.playTap();
+    setCompletingOrder(order);
     setGpsLoading(true);
     setGpsError(null);
     setDeliveryCoords(null);
@@ -173,10 +192,10 @@ export default function App() {
       const geoResult = await getCurrentPosition(7000);
       if (geoResult.success) {
         setDeliveryCoords(geoResult.coords);
-        if (currentDeliveringOrder?.pickupCoords) {
+        if (order.pickupCoords) {
           const dist = calculateHaversineDistance(
-            currentDeliveringOrder.pickupCoords.lat,
-            currentDeliveringOrder.pickupCoords.lng,
+            order.pickupCoords.lat,
+            order.pickupCoords.lng,
             geoResult.coords.lat,
             geoResult.coords.lng
           );
@@ -194,21 +213,24 @@ export default function App() {
 
   // CẬP NHẬT THÔNG TIN ĐƠN ĐANG GIAO (Ví dụ: địa chỉ khách gõ / dán)
   const handleUpdateDeliveringOrder = (updatedOrder) => {
-    setCurrentDeliveringOrder(updatedOrder);
-    if (activeShift) {
-      updateActiveShift({
-        ...activeShift,
-        deliveringOrder: updatedOrder,
-      });
-    }
+    if (!updatedOrder) return;
+    updateActiveShift((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        deliveringOrders: (prev.deliveringOrders || []).map((o) =>
+          o.id === updatedOrder.id ? updatedOrder : o
+        ),
+      };
+    });
   };
 
   // XÁC NHẬN LƯU ĐƠN (Sau khi chọn 5k, 10k, 15k... hoặc nhập số)
   const handleConfirmOrder = ({ fee, distanceKm, note, destinationAddress }) => {
-    if (!currentDeliveringOrder || !activeShift) return;
+    if (!completingOrder || !activeShift) return;
 
     const completedOrder = {
-      ...currentDeliveringOrder,
+      ...completingOrder,
       deliveryTime: Date.now(),
       deliveryCoords: deliveryCoords,
       distanceKm: distanceKm || 0,
@@ -216,29 +238,33 @@ export default function App() {
       note: note || '',
       destinationAddress: destinationAddress !== undefined 
         ? destinationAddress 
-        : (currentDeliveringOrder.destinationAddress || ''),
+        : (completingOrder.destinationAddress || ''),
     };
 
-    const newOrders = [...(activeShift.orders || []), completedOrder];
-    const updatedShift = {
-      ...activeShift,
-      orders: newOrders,
-      deliveringOrder: null,
-    };
+    updateActiveShift((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        orders: [...(prev.orders || []), completedOrder],
+        deliveringOrders: (prev.deliveringOrders || []).filter((o) => o.id !== completingOrder.id),
+      };
+    });
 
-    setCurrentDeliveringOrder(null);
-    updateActiveShift(updatedShift);
+    setCompletingOrder(null);
     setShowCompleteModal(false);
   };
 
   // HỦY ĐƠN ĐANG GIAO
-  const handleCancelDeliveringOrder = () => {
-    if (confirm('Bạn có chắc muốn hủy đơn đang giao này không?')) {
+  const handleCancelDeliveringOrder = (order) => {
+    if (!order) return;
+    if (confirm(`Bạn có chắc muốn hủy Đơn #${order.orderNumber} này không?`)) {
       sound.playTap();
-      setCurrentDeliveringOrder(null);
-      updateActiveShift({
-        ...activeShift,
-        deliveringOrder: null,
+      updateActiveShift((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          deliveringOrders: (prev.deliveringOrders || []).filter((o) => o.id !== order.id),
+        };
       });
     }
   };
@@ -247,18 +273,20 @@ export default function App() {
   const handleDeleteOrder = (orderId) => {
     if (confirm('Bạn có chắc muốn xóa đơn này khỏi danh sách ca hôm nay?')) {
       sound.playTap();
-      const newOrders = (activeShift.orders || []).filter(o => o.id !== orderId);
-      updateActiveShift({
-        ...activeShift,
-        orders: newOrders,
+      updateActiveShift((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          orders: (prev.orders || []).filter(o => o.id !== orderId),
+        };
       });
     }
   };
 
   // YÊU CẦU CHECK-OUT (Mở modal tổng kết)
   const handleRequestCheckout = () => {
-    if (currentDeliveringOrder) {
-      alert('Bạn đang có đơn chưa hoàn thành! Vui lòng bấm "Hoàn thành đơn" hoặc "Hủy đơn" trước khi check-out.');
+    if (deliveringOrders.length > 0) {
+      alert(`Bạn đang có ${deliveringOrders.length} đơn chưa hoàn thành! Vui lòng bấm "Hoàn thành" hoặc "Hủy đơn" trước khi check-out.`);
       return;
     }
     sound.playTap();
@@ -278,13 +306,13 @@ export default function App() {
       isOnBreak: false,
       breakStartTime: null,
       totalBreakDurationMs: finalBreakDuration,
-      deliveringOrder: null,
+      deliveringOrders: [],
     };
 
     const newHistory = saveShiftToHistory(finalShift);
     setHistory(newHistory);
     updateActiveShift(null);
-    setCurrentDeliveringOrder(null);
+    setCompletingOrder(null);
     setShowCheckoutModal(false);
     setActiveTab('history'); // Switch to history tab to view past summary
   };
@@ -311,7 +339,7 @@ export default function App() {
             /* ACTIVE WORK SHIFT SCREEN */
             <ActiveShift
               shift={activeShift}
-              currentDeliveringOrder={currentDeliveringOrder}
+              deliveringOrders={deliveringOrders}
               onUpdateDeliveringOrder={handleUpdateDeliveringOrder}
               onAcceptOrder={handleAcceptOrder}
               onStartCompleteOrder={handleStartCompleteOrder}
@@ -400,15 +428,18 @@ export default function App() {
       </main>
 
       {/* MODAL: Hoàn thành đơn (Chọn tiền phí ship & xác nhận GPS) */}
-      {showCompleteModal && currentDeliveringOrder && (
+      {showCompleteModal && completingOrder && (
         <CompleteOrderModal
-          order={currentDeliveringOrder}
+          order={completingOrder}
           deliveryCoords={deliveryCoords}
           distanceKm={calculatedDistance}
           gpsLoading={gpsLoading}
           gpsError={gpsError}
           onConfirm={handleConfirmOrder}
-          onClose={() => setShowCompleteModal(false)}
+          onClose={() => {
+            setShowCompleteModal(false);
+            setCompletingOrder(null);
+          }}
         />
       )}
 
