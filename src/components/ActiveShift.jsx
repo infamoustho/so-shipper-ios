@@ -230,6 +230,13 @@ export default function ActiveShift({
                 placeholder="Ví dụ: Ngõ 105 Doãn Kế Thiện hoặc dán tọa độ..."
                 value={currentDeliveringOrder.destinationAddress || ''}
                 onChange={(e) => handleUpdateAddress(e.target.value)}
+                onPaste={(e) => {
+                  const pasted = e.clipboardData?.getData('text');
+                  if (pasted && pasted.trim()) {
+                    e.preventDefault();
+                    handleUpdateAddress(parseLocationInput(pasted.trim()));
+                  }
+                }}
                 className="flex-1 bg-slate-900 border border-slate-700/80 focus:border-blue-500 text-white text-xs px-3 py-2.5 rounded-xl outline-none placeholder:text-slate-500"
               />
               <button
@@ -495,6 +502,13 @@ export default function ActiveShift({
               <li>Chọn mục <strong className="text-white">Bản đồ ngoại tuyến (Offline maps)</strong>.</li>
               <li>Chọn <strong className="text-blue-400">Chọn bản đồ riêng của bạn</strong>, căn khung vùng bạn hay chạy rồi bấm <strong className="text-emerald-400">Tải xuống</strong>.</li>
             </ol>
+
+            <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-3 text-[11px] text-slate-300 space-y-1">
+              <p className="font-bold text-blue-300">📋 Mẹo bấm "Dán" 1 chạm không bị iPhone hỏi lại:</p>
+              <p>
+                Vào <strong className="text-white">Cài đặt iPhone</strong> ➔ <strong className="text-white">Sổ Shipper</strong> ➔ <strong className="text-white">Dán từ ứng dụng khác</strong> ➔ chọn <strong className="text-emerald-400">Cho phép</strong>.
+              </p>
+            </div>
 
             <p className="text-[11px] text-amber-300/90 italic">
               ✨ Xong! Sau khi tải, app Sổ Shipper sẽ gọi Google Maps chỉ đường & ngõ sâu mượt mà kể cả khi tắt mạng.
